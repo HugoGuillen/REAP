@@ -1,0 +1,18 @@
+# stringtieAssembly.rule
+# Do de novo assembly with StringTie using sorted_merged BAM files
+
+rule stringtieAssembly:
+	input:
+		project+"/star/mergedBAM/{group_names}.merged.bam"
+	output:
+		project+"/assembly/stringtie/{group_names}.gtf"
+	params:
+		stringtie=config["stringtie_version"]
+	log:
+		log=project+"/logs/assembly/{group_names}_stringtie.log"
+	threads:
+		int(config["star_threads"])
+	shell:
+		"module add UHTS/Aligner/stringtie/{params.stringtie}; "
+		"mkdir -p "+project+"/assembly/stringtie; "
+		"stringtie {input} --rf -o {output} -p {threads} 2>{log}; "

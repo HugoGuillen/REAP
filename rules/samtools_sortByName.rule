@@ -1,0 +1,20 @@
+# samtools_sortByName.rule
+# sorts bam file by name. This is needed as input to qualimap rnaseq
+
+rule samtools_sortByName:
+	input:
+		"star/map/{Basename}Aligned.sortedByCoord.out.bam"
+	output:
+		"star/name_sorted/{Basename}.nameSorted.bam"
+	params:
+		samtools=config["samtools_version"],
+		mem=config["sort_mem"]
+	threads:
+		int(config["samtools_sortByName_threads"])
+	log:
+		"logs/sortByName/{Basename}.log"
+	shell:
+		"module add UHTS/Analysis/samtools/{params.samtools}; "
+		"mkdir -p star/name_sorted/;"
+		"samtools sort -n -@ {threads} -m {params.mem} -T {wildcards.Basename}.name -o {output} {input} 2> {log}"
+		

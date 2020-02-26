@@ -1,0 +1,64 @@
+# starAlignment.rule
+# Align reads [fastq.gz] using star to a given reference genome
+
+
+def comma_join(files):
+	return ",".join(files) if isinstance(files,list) else files
+
+def checkMate2(wildcards):
+	if(len(mates)==2):
+		mate2=expand(config["fastqFolder"]+"{unit}"+mates[1]+"."+config["extension"], unit=SamplesPerID[wildcards.SampleIDs])
+	else:
+		mate2=""
+	return mate2
+
+
+rule starAlignment:
+	input:
+		project+"/star/star_ref/chrStart.txt",
+		mate1=lambda wildcards: expand(config["fastqFolder"]+"{unit}"+mates[0]+"."+config["extension"], unit=SamplesPerID[wildcards.SampleIDs])
+	output:
+		project+"/star/map/{SampleIDs}Aligned.sortedByCoord.out.bam",
+		project+"/star/map/{SampleIDs}Log.final.out",
+		log=project+"/logs/star/{SampleIDs}.log"
+	params:
+		output=project+"/star/map/{SampleIDs}",
+		mate2=checkMate2,
+		gtf=config["gtf"],
+		star_ref=config["star_reference"],
+		star_v=config["star_version"],
+		starRAM=config["star_RAM"]
+	threads:
+		int(config["star_threads"])
+	log:
+		project+"/logs/star/{SampleIDs}.log"
+	run:
+
+		mate1Files=comma_join(input.mate1)
+
+		# command to read fasq files
+		if "gz" in config["extension"]:
+			readCommand="zcat"
+		else:
+			readCommand="cat"
+	
+		# star ref
+		if params.star_ref == "":
+			ref=project+"/star/star_ref"
+		else:
+			ref=params.star_ref
+
+		# prepare files for for paired-end data:
+		if len(params.mate2)>0:
+			mate2Files=comma_join(params.mate2)
+			inputfiles="{} {}".format(mate1Files, mate2Files)
+		# or for single-end data			
+		else:
+			inputfiles="{}".format(mate1Files)
+
+		command="module add UHTS/Aligner/STAR/{params.star_v}; mkdir -p "+project+"/star/map; STAR --outSAMstrandField intronMotif --limitBAMsortRAM {params.starRAM} --runThreadN 2 --outSAMtype BAM SortedByCoordinate --genomeDir "+ref+" --readFilesCommand "+readCommand+" --readFilesIn {inputfiles} --outFileNamePrefix {params.output} 2>{log};"
+		shell(command)
+
+	
+
+

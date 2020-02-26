@@ -1,0 +1,20 @@
+# samtools_sortByCoord.rule
+# sorts bam file by coordinates and index. This file will be kept. It can be used in IGV
+
+rule samtools_sortByCoord:
+	input:
+		"star/map/{Basename}Aligned.sortedByCoord.out.bam"
+	output:
+		"star/map/{Basename}.coordSorted.bam"
+	params:
+		samtools=config["samtools_version"],
+		mem=config["sort_mem"]
+	threads:
+		int(config["samtools_sortByCoord_threads"])
+	log:
+		"logs/sortByCoord/{Basename}.log"
+	shell:
+		"module add UHTS/Analysis/samtools/{params.samtools}; "
+		"samtools view -h {input} | samtools sort --output-fmt bam -@ {threads} -m {params.mem} -T {wildcards.Basename}.coord -o {output} 2> {log}; "
+		"samtools index {output}"
+		

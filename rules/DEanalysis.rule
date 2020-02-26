@@ -1,0 +1,18 @@
+# DEanalysis.rule
+# Differential expression analysis over kallisto quantification 
+
+rule DEanalysis:
+	input:
+		folders=expand(project+"/kallisto/{samples}/abundance.tsv", samples=SampleIDs),
+		map=project+"/sleuth/geneNameMap/transcriptID_geneName_map.txt"
+	output:
+		pca=project+"/sleuth/PC.pdf"
+	params:
+		design=config["experimental_design"],
+		Rversion=config["R_version"],
+		Rpath=config["R_path"]
+	log:
+		log=project+"/logs/sleuth/sleuth.log"
+	run:
+		R_script=params.Rpath+"script"
+		shell("module add R/{params.Rversion}; mkdir -p "+project+"/sleuth; {R_script} rules/Sleuth.R {params.design} input.map "+project+" 2>{log}")

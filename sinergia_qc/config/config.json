@@ -1,0 +1,41 @@
+{
+	"project_name" : "Sinergia", 
+	"group" : "Carlos", 
+	"email" : "carlos.pulido@dbmr.unibe.ch",
+	"fastqc_version" : "0.11.2",
+	"fastqFolder" : "/data/projects/p283_rna_and_disease/projects/sinergia/samples_test/",
+	"extension" : "fastq.gz",
+	"sampleName" : {
+		"delim" : "_", 
+		"start" : "1", 
+		"end" : "1" 
+	},
+	"mates" : {
+		"mate1" : "R1", 
+		"mate2" : "R2" 
+	},
+	"star_version" : "2.5.3a",
+	"star_threads" : "8",
+	"star_sort_RAM": "25000000000",
+	"gtf" : "/data7/projects/p283_rna_and_disease/DATA.FILES/annotations/mm10_allchr_annotation.gtf", 	 
+	"bed" : "/data/projects/p283_rna_and_disease/projects/sinergia/mm10/gencode.vM14.annotation.bed", 
+	"reference_fasta" : "/data7/projects/p283_rna_and_disease/DATA.FILES/Genomes/mm10",	
+	"star_reference" : "",
+	"samtools_version" : "1.3",
+	"stringtie_version" : "1.2.3",
+	"kallisto_version" : "0.43.0",
+	"bedtools_version" : "2.26.0",
+	"experimental_design" : "/data/projects/p283_rna_and_disease/projects/sinergia/sinergia/experimental_design.txt", 	
+	"R_version" : "3.3.2",
+	"R_path" : "/software/R/3.3.2/bin/R",
+	"qualimap" : "/mnt/apps/qualimap_v2.2.1/qualimap",
+	"qualimap_mem" : "16G",
+	"qualimap_rnaseq_mem" : "32G", 
+	"qualimap_multibam_threads" : "4",
+	"rseqc_version" : "2.6.1", 	
+	"biomart_db" : "mmusculus_gene_ensembl", 
+	"strand" : "2", 
+	"feature_type" : "exon", 
+	"meta_feature" : "gene_id", 
+	"min_mapQ" : "10"
+}

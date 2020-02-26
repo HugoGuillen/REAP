@@ -1,0 +1,21 @@
+# transcript_GeneName_map
+# Generates a TranscriptID - GeneName map for DE analysis step
+
+rule transcript_GeneName_map:
+	input:
+		ref_assembly=config["gtf"]
+	params:
+		novel=config["novel_assembly"],
+		bedtools=config["bedtools_version"]
+	output:
+		map=project+"/sleuth/geneNameMap/transcriptID_geneName_map.txt"
+	log:
+		log=project+"/logs/sleuth/transcript_geneName_map.log"
+	run:
+		if params.novel == "1":
+			novel_assembly=project+"/assembly/guided_merged_assembly.gtf"
+			command="bash ./scripts/transcript_geneName_novel.sh {} {} {} {}".format(project, params.bedtools, novel_assembly, input.ref_assembly)
+			shell(command)
+		else:
+			command="bash ./scripts/transcript_geneName.sh {} {}".format(project, params.bedtools, input.ref_assembly)
+			shell(command)

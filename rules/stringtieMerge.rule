@@ -1,0 +1,21 @@
+# stringtieMerge.rule
+# assembly merge with StringTie with reference genome
+
+rule stringtieMerge:
+	input:
+		expand(project+"/assembly/{assembly}/{group_names}.gtf", assembly=["scallop", "stringtie"], group_names=group_names)
+	output:
+		project+"/assembly/guided_merged_assembly.gtf"
+	params:
+		stringtie=config["stringtie_version"],
+		gtf=config["gtf"]
+	log:
+		log=project+"/logs/assembly/merged_assembly.log"
+	threads:
+		int(config["star_threads"])
+	shell:
+		"module add UHTS/Aligner/stringtie/{params.stringtie}; "
+		"stringtie --merge -F 0.1 -T 0.1 -G {params.gtf} -o {output} {input} 2>{log}; "
+
+
+		

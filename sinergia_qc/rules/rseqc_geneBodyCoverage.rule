@@ -1,0 +1,26 @@
+# rseqc_geneBodyCoverage.rule
+# runs the following script from RSeQC:
+# geneBody_coverage.py  --> number of reads along gene body
+
+
+rule rseqc_geneBodyCoverage:
+	input:
+		main("coord_sorted/{sample}.coordSorted.bam")
+	output:
+		bodyCov="rseqc.{sample}.geneBodyCoverage.curves.pdf",
+		rscript="rseqc.{sample}.geneBodyCoverage.r",
+		coverage_table="rseqc.{sample}.geneBodyCoverage.txt"	
+	params:
+		bed=config["bed"],
+		R_path=config["R_path"],
+		rseqc=config["rseqc_version"],
+	log:
+		"logs/rseqc/{sample}.geneBodyCoverage.log"
+	run:
+		basename="rseqc.{}".format(wildcards.sample)
+		r_path=params.R_path
+		r_path=r_path.split("/")
+		r_path="/".join(r_path[:-1])
+		r_path=r_path+"/"
+		shell('/bin/echo Job geneBodyCoverage.{wildcards.sample} with Job ID "$JOB_ID" runs on host `hostname`; export PATH={r_path}:$PATH; module add UHTS/Quality_control/RSeQC/{params.rseqc}; geneBody_coverage.py -i {input} -r {params.bed} -o {basename} 2> {log}')		
+		

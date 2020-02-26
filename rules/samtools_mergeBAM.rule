@@ -1,0 +1,20 @@
+# samtools_mergeBAM.rule
+# merge sorted BAM files from samples belonging to the same groups specified in the  Experimental Design file
+
+rule samtools_mergeBAM:
+	input:
+		files=lambda wildcards: expand(project+"/star/map/{samples}Aligned.sortedByCoord.out.bam", samples=groups[wildcards.group_names])
+	output:
+		project+"/star/mergedBAM/{group_names}.merged.bam"
+	params:
+		samtools=config["samtools_version"],
+		mem=config["sort_mem"]
+	threads:
+		int(config["samtools_sortByName_threads"])
+	log:
+		project+"/logs/mergeBAM/{group_names}.log"
+	shell:
+		"module add UHTS/Analysis/samtools/{params.samtools}; "
+		"mkdir -p "+project+"/star/mergedBAM/; "
+		"samtools merge -@ {threads} {output} {input} 2> {log}"
+		

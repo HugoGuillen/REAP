@@ -1,0 +1,14 @@
+# fastqc.rule
+# run fastqc on each individual fastq file
+
+rule fastqc:
+	input:
+		config["fastqFolder"]+"{SampleName}{mates}."+config["extension"]
+	output:
+		project+"/fastqc/{SampleName}{mates}_fastqc.html"
+	log:
+		log=project+"/logs/fastqc/{SampleName}{mates}.log"
+	shell:
+		"mkdir -p "+project+"/fastqc; "
+		"module add UHTS/Quality_control/fastqc/0.11.7; "
+		"fastqc -o "+project+"/fastqc --extract {input} 2>{log}"

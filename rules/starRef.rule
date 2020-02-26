@@ -1,0 +1,21 @@
+# starRef.rule
+# creates STAR reference index, if needed, for alignemnt
+
+rule starRef:
+	output:
+		project+"/star/star_ref/chrStart.txt"
+	log:
+		log=project+"/logs/star/star_ref.log"
+	params:
+		gtf=config["gtf"],
+		fasta=config["reference_fasta"],
+		star_ref=config["star_reference"],
+		star_v=config["star_version"]
+	threads:
+		int(config["star_threads"])
+	shell:
+		"mkdir -p "+project+"/star/star_ref; "
+		"if [ ! -z {params.star_ref} ]; then cp {params.star_ref}chrStart.txt "+project+"star/star_ref/ && exit 0; else module add UHTS/Aligner/STAR/{params.star_v}; STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir "+project+"/star/star_ref/ --genomeFastaFiles {params.fasta} --sjdbGTFfile {params.gtf} 2>{log}; fi"
+
+
+

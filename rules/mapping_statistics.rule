@@ -1,0 +1,13 @@
+# mapping_statistics.rule
+# Generates a file with a summary of the alignments for all samples
+
+rule mapping_statistics:
+	input:
+		expand(project+"/star/map/{sample}Log.final.out", sample=SampleIDs)
+	output:
+		project+"/star/statistics.csv"
+	log:
+		project+"/logs/star/statistics.log"
+	run:
+		for i in list(input):
+			shell("bash ./scripts/mapping_statistics.sh "+i+" {output} 2>{log}; ")

@@ -1,0 +1,35 @@
+# qualimap_multibam.rule
+# Runs Qualimap2 multibam. This produces for the final report:
+# 	1) GC content histogram
+#	2) Insert size histogram
+
+# Script will remove whitespaces from qualimap output filenames used in report
+
+
+def setupInputfile(samples, files):
+	out=open("multibam_input.txt", 'w')
+	for a, b in zip(samples, files):
+		out.write(a+"\t"+b+"\n")
+	out.close()
+
+rule qualimap_multibam:
+	input:
+		bam=main(expand("star/map/{sample}Aligned.sortedByCoord.out.bam", sample=SampleNames))
+	output:
+		"qualimap/multibam.qc/multisampleBamQcReport.html",
+		"qualimap/multibam.qc/images_multisampleBamQcReport/InsertSizeHistogram.png",
+		"qualimap/multibam.qc/images_multisampleBamQcReport/MappedReadsGC-contentDistribution.png"
+	params:
+		R_path=config["R_path"],
+		qualimap=config["qualimap"],
+		qualimap_mem=config["qualimap_mem"],
+		gtf=config["gtf"]
+	threads:
+		int(config["qualimap_multibam_threads"])
+	log:
+		"logs/qualimap/multibam.log"
+	run:
+		setupInputfile(SampleNames, input.bam)
+		outputdir="qualimap/multibam.qc"
+
+		shell("export PATH={params.R_path}:$PATH; {params.qualimap} multi-bamqc --java-mem-size={params.qualimap_mem} -c -d multibam_input.txt --gff {params.gtf} -outdir {outputdir} -r 2> {log}; rm -rf qualimap/multibam.qc/*_stats; mv -f ../sinergia_main/star/map/*_stats qualimap/multibam.qc/; chmod +x rules/removeSpaces.py; rules/removeSpaces.py qualimap/multibam.qc/images_multisampleBamQcReport")

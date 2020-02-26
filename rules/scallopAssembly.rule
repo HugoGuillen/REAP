@@ -1,0 +1,20 @@
+# scallopAssembly.rule
+# Do de novo assembly with SCALLOP using sorted_merged BAM files
+
+rule scallopAssembly:
+	input:
+		project+"/star/mergedBAM/{group_names}.merged.bam"
+	output:
+		project+"/assembly/scallop/{group_names}.gtf"
+	params:
+		stringtie=config["scallop_version"]
+	log:
+		log=project+"/logs/assembly/{group_names}_scallop.log"
+	threads:
+		int(config["star_threads"])
+	shell:
+		"export LD_LIBRARY_PATH=/mnt/software/UHTS/Analysis/HTSlib/1.6/lib/:$LD_LIBRARY_PATH; "
+		"export LD_LIBRARY_PATH=./scripts/scallop_env/lib64/:$LD_LIBRARY_PATH; "
+		"mkdir -p "+project+"/assembly/scallop; "
+		"./scripts/scallop_env/bin/scallop -i {input} -o {output} --min_transcript_coverage 0.9 --min_single_exon_coverage 15 --min_num_hits_in_bundle 10 --library_type first 2>{log}"
+		

@@ -1,0 +1,5 @@
+sample	condition
+cFb1	cardiac_fibroblast
+cFb2	cardiac_fibroblast
+iCPC8	cardiac_precursor_cells
+iCPC10	cardiac_precursor_cells

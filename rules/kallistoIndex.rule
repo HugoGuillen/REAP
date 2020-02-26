@@ -1,0 +1,23 @@
+# kallistoIndex.rule
+# creates index for KALLISTO
+
+# Implement novel_assembly == 0; input must be reference gtf if == 0
+
+rule kallistoIndex:
+	input:
+		project+"/assembly/guided_merged_assembly.gtf"
+	output:
+		project+"/kallisto/kallisto_index"
+	params:
+		kallisto=config["kallisto_version"],
+		bedtools=config["bedtools_version"],
+		fasta=config["reference_fasta"]
+	log:
+		log=project+"/logs/kallisto/index.log"
+
+	run:
+		shell("module add UHTS/Analysis/kallisto/{params.kallisto}; module add UHTS/Analysis/BEDTools/{params.bedtools}; mkdir -p "+project+"/kallisto; ./scripts/gffread -w "+project+"/kallisto/reference.fa -g {params.fasta} {input} 2>{log}; kallisto index -i {output} "+project+"/kallisto/reference.fa 2>>{log}; ")
+		
+
+
+

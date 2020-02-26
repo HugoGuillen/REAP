@@ -1,0 +1,85 @@
+# snakefile for QC steps
+
+# HOW TO LAUNCH ON THE CLUSTER
+# # snakemake --printshellcmds --cluster "qsub -q all.q -pe smp {threads} -o <absolutePathOutfile> -e <absolutePathErrorfile> -N <jobName>" --jobs 10 --latency-wait 3600 
+# # snakemake --printshellcmds --cluster "qsub -q all.q -pe smp 8 -o /data/projects/p283_rna_and_disease/projects/sinergia/sinergia/qc/output -e /data/projects/p283_rna_and_disease/projects/sinergia/sinergia/qc/error -N QC" --jobs 10 --latency-wait 3600 
+
+
+subworkflow main:
+	workdir: "../sinergia_main"
+	snakefile: "../sinergia_main/Snakefile"
+
+
+
+import os, re, glob, sys
+
+configfile: "config/config.json"
+
+def getInfo():
+	FilesPerSample={}
+	SampleList=[]
+	FileBasename=[]
+	uniqueSamples=[]
+
+	
+	delim=config["sampleName"]["delim"]
+	start=int(config["sampleName"]["start"])
+	end=int(config["sampleName"]["end"])
+	extension=config["extension"]
+	mate1=config["mates"]["mate1"]
+
+
+	for file in os.listdir(config["fastqFolder"]):
+		if file.endswith(extension):
+
+			temp=file.split(delim)[(start-1):end]
+			temp=delim.join(temp) #ok also when len(temp) is 1
+			temp=temp+delim # makes sure that full sample ID is matched
+			SampleList.append(temp)
+
+            # Make a list of all file basenames.
+			if file.endswith(delim+mate1+"."+extension):
+				temp2=re.sub(mate1+"."+extension, "", file)
+				FileBasename.append(temp2)
+
+	uniqueSamples=sorted(list(set(SampleList)))
+        # Make a dictionary that has sample IDs as keys and lists of all file basenames that belong to that sample as values
+	for x in uniqueSamples:
+		temp3=[]
+		for y in FileBasename:
+			if y.startswith(x):  # sample name will always be at the beginning of the file name
+				temp3.append(y)
+		FilesPerSample[x]=temp3
+
+	FileBasename=sorted(list(set(FileBasename)))
+
+	return [FileBasename, uniqueSamples, FilesPerSample]
+
+FileBasename=getInfo()[0]
+SampleNames=getInfo()[1]
+FilesPerSample=getInfo()[2]
+
+mates=sorted(list(config["mates"].values()))
+
+# Check that all required input files and tools exist:
+Files=[config["gtf"], config["experimental_design"], config["bed"], config["R_path"], config["qualimap"]]
+for x in Files:
+	if not os.path.isfile(x):
+		sys.exit("File {} does not exist".format(x))
+
+
+## Check that the data folder with the fastq files exists (will not check if it actually contains fastq files with expected names)
+if not os.path.isdir(config["fastqFolder"]):
+	sys.exit("The directory with the fastq files does not exist")
+
+
+rule all:
+	input: 
+		"qualimap/multibam.qc/multisampleBamQcReport.html"
+#		"html_summary/RNASeq_report.html"
+
+include: "rules/qualimap_multibam.rule"
+#include: "rules/qualimap_rnaseq.rule"
+#include: "rules/qualimap_counts.rule"
+#include: "rules/rseqc.rule"
+#include: "rules/html_report.rule"

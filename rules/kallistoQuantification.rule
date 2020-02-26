@@ -1,0 +1,55 @@
+# kallistoQuantification.rule
+# Transcript quantification using KALLISTO
+
+
+def space_join(files):
+	return " ".join(files) if isinstance(files,list) else files
+
+def checkMate2(wildcards):
+	if(len(mates)==2):
+		mate2=expand(config["fastqFolder"]+"{unit}"+mates[1]+"."+config["extension"], unit=SamplesPerID[wildcards.SampleIDs])
+	else:
+		mate2=""
+	return mate2
+
+
+rule kallistoQuantification:
+	input:
+		mate1=lambda wildcards: expand(config["fastqFolder"]+"{unit}"+mates[0]+"."+config["extension"], unit=SamplesPerID[wildcards.SampleIDs]),
+		index=project+"/kallisto/kallisto_index"
+	output:
+		project+"/kallisto/{SampleIDs}/abundance.tsv"
+	params:
+		outputs=directory(project+"/kallisto/{SampleIDs}"),
+		mate2=checkMate2,
+		kallisto=config["kallisto_version"],
+		bedtools=config["bedtools_version"],
+		library=config["library_preparation"],
+		length=config["fragment_length"],
+		sd=config["standard_deviation"]
+	log:
+		log=project+"/logs/kallisto/{SampleIDs}.log"
+	run:
+		# for paired-end data:
+		if len(params.mate2)>0:
+			inputfiles = ""
+			for i in range(0,len(input.mate1)-1):
+				inputfiles = inputfiles+input.mate1[i]+" "+params.mate2[i]+" "
+
+			if params.library == "forward":
+				type = "--fr-stranded"
+			else:
+				type = "--rf-stranded"
+
+			arguments = "-b 100 {}".format(type)
+					
+		# for single-end data			
+		else:
+			inputfiles=space_join(input.mate1)
+			arguments = "-b 100 --single -l {} -s {}".format({params.length}, {params.sd})
+
+		shell("module add UHTS/Analysis/kallisto/{params.kallisto}; mkdir -p "+project+"/kallisto; kallisto quant {arguments} -i {input.index} -o {params.outputs} {inputfiles} 2>{log}")
+		
+
+
+

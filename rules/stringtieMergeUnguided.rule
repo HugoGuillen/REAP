@@ -1,0 +1,21 @@
+# stringtieMerge.rule
+# assembly merge with StringTie w/o reference genome
+
+rule stringtieMergeUnguided:
+	input:
+		expand("StringTie/{Basename}de_novo_assembly_unguided.gtf", Basename=SampleNames)
+	output:
+		"StringTie/unguided_merged_assembly.gtf"
+	params:
+		stringtie=config["stringtie_version"],
+		gtf=config["gtf"]
+	log:
+		log="logs/StringTie/merged_assembly.log"
+	threads:
+		int(config["star_threads"])
+	shell:
+		"module add UHTS/Aligner/stringtie/{params.stringtie}; "
+		"mkdir -p StringTie; "
+		"stringtie --merge -F 0.1 -T 0.1 -o {output} {input}; "
+
+		

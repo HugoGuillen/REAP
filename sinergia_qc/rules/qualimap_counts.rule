@@ -1,0 +1,83 @@
+# qualimap_counts.rule
+# runs Qualimap2 counts to produce the following results for the final report:
+#	1) Boxplots of counts per sample
+#	2) Counts per gene biotype for each sample
+# Qualimap2 counts cannot currently handle more than 2 experimental groups. When more are
+# defined in expDesign, it will crash even though groups are not compared here.
+# In these cases, countDescription.txt will be set up to have a single experimental group
+# Whitespaces will be removed from qualimap output filenames which are used in report
+
+# For large experiments, only the first 12 samples will be used.
+
+def countDescriptionFile(expDesign, counts, countsNoHeader, delim):
+	with open(counts, "r") as f:
+		countHeader=f.readline()
+	countHeader=countHeader.strip('\n').strip('\r').split('\t')
+	# find the number of experimental Groups
+	inputfile=open(expDesign, "r")
+	levels=[]
+	for line in inputfile:
+		temp1=line.strip('\n').strip('\r')
+		if temp1=='':
+			continue
+		else:
+			levels.append(temp1.split('\t')[1])		
+	inputfile.close()
+	nbrGroups=len(set(levels))
+	inputfile=open(expDesign, "r")
+	outputfilename="countDescription.txt"
+	output=open(outputfilename, "w")
+	counter=0
+	for line in inputfile:
+		counter+=1
+		if(counter<=12):
+			temp=line.strip('\n').strip('\r')
+			if temp=='':
+				continue
+			else:
+				temp=temp.split('\t')
+				# check if the sample ID ends with delimiter. Add if not:
+				if not temp[0].endswith(delim):
+					temp[0]=temp[0]+delim
+				
+				if(nbrGroups>2):
+					temp=[temp[0], "group1"]
+				
+				temp.append(countsNoHeader)
+				try:
+					temp.append(str(countHeader.index(temp[0])+1)) # requires a full match, e.g. "001" will match only second element of ["0010", "001"]
+					temp="\t".join(temp)
+					output.write(temp + "\n")
+				except ValueError:
+					import sys,os
+					os.remove(outputfilename)
+					sys.exit("sample name {} does not exist in counts file".format(temp[0]))
+		else:
+			break
+	inputfile.close()
+	output.close()
+
+
+rule qualimap_counts:
+	input:
+		final=main("counts/{}.finalCounts.txt".format(config["count_table_basename"])),
+		noheader=main("counts/{}.finalCounts.noHeader.txt".format(config["count_table_basename"]))
+	output:
+		"qualimap/counts/GlobalReport.html",
+		expand("qualimap/counts/images_{sample}Report/CountsPerBiotype.png", sample=SampleNames[0:12]),
+		"qualimap/counts/images_GlobalReport/CountsDistribution.png"
+	params:
+		R_path=config["R_path"],
+		qualimap=config["qualimap"],
+		biomart_db=config["biomart_db"],
+		expDesign=config["expDesign"],
+		delim=config["sampleName"]["delim"]
+		
+	log:
+		"logs/qualimap/counts.log"
+	run:
+		
+		R_script=params.R_path+"script"
+		countDescriptionFile(params.expDesign, input.final, input.noheader, params.delim)
+		
+		shell("{R_script} rules/createGeneInfofile.R {params.biomart_db} {input.final}; {params.qualimap} counts -d countDescription.txt -i geneinfofile.txt --threshold 1 -outdir qualimap/counts -R {R_script} 2> {log}; chmod +x rules/removeSpaces.py; rules/removeSpaces.py qualimap/counts/images_GlobalReport; for f in qualimap/counts/images_*Report; do rules/removeSpaces.py $f; done; rename 'images_sample' 'images' qualimap/counts/images_*_Report")

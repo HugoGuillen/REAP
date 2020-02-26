@@ -1,0 +1,132 @@
+# html_report.rule
+# creates a report from the output of the various QC tools
+
+def checkFile(file, defaultValue=list()):
+	if os.path.isfile(file):
+		return file
+	else:
+		return defaultValue
+
+def checkMultiFiles(files, defaultValue=list()):
+	fileList=list()
+	missing=0
+	for i in files:
+		if os.path.isfile(i):
+			fileList.append(i)
+		else:
+			missing+=1
+	if missing==0:
+		return fileList
+	else:
+		return defaultValue
+		
+def checkBiotype(files, defaultValue=list()):
+	fileList=list()
+	missing=0
+	for i in files:
+		if os.path.isfile(i):
+			fileList.append(i)
+		else:
+# qualimap will introduce sample_ before the sample name if it starts with int		
+			altName=i.replace("images_", "images_sample_")
+			if os.path.isfile(altName):
+				fileList.append(altName)
+			else:
+				missing+=1
+	if missing==0:
+		return fileList
+	else:
+		return defaultValue
+		
+			
+rule html_report:
+	input:
+		fastqc=checkMultiFiles(expand("fastqc/{FileBasename}{mates}_fastqc/Images/per_base_quality.png", FileBasename=FileBasename, mates=mates)),
+		gc=checkFile("qualimap/multibam.qc/images_multisampleBamQcReport/MappedReadsGC-contentDistribution.png"),
+		adapter=checkMultiFiles(expand("fastqc/{FileBasename}{mates}_fastqc/Images/adapter_content.png", FileBasename=FileBasename, mates=mates)),
+		counts=checkFile("qualimap/counts/images_GlobalReport/CountsDistribution.png"),
+		insert=checkFile("qualimap/multibam.qc/images_multisampleBamQcReport/InsertSizeHistogram.png"),
+		stat=checkMultiFiles(expand("qualimap/rnaqc/{sample}/rnaseq_qc_results.txt", sample=SampleNames)),
+		dist=checkMultiFiles(expand("rseqc/{sample}/{sample}.readDistributionStats.txt", sample=SampleNames)),
+		geneBody=checkMultiFiles(expand("rseqc/{sample}/rseqc.{sample}.geneBodyCoverage.curves.pdf", sample=SampleNames)),
+		sat=checkMultiFiles(expand("rseqc/{sample}/rseqc.{sample}.junctionSaturation_plot.pdf", sample=SampleNames)),
+		biotype=checkBiotype(expand("qualimap/counts/images_{sample}Report/CountsPerBiotype.png", sample=SampleNames)),
+		pca=checkFile("DESeq/{}_PCA-500MostVariableGenes.pdf".format(config["count_table_basename"])), 
+		ma=checkFile("DESeq/{}_MAPlot.pdf".format(config["count_table_basename"]))
+
+	output:
+		"html_summary/RNASeq_report.html"
+	params:
+		project_name=config["project_name"],
+		group=config["group"],
+		email=config["email"],
+		samples=expand("{samples}", samples=SampleNames),
+		fastqc_names=expand("{names}", names=FileBasename)
+	run:
+		if input.fastqc==list():
+			fastqc=""
+		else:
+			fastqc="-q {}".format(input.fastqc)
+		
+		if input.gc==list():
+			gc=""
+		else:
+			gc="-g {}".format(input.gc)
+			
+		if input.adapter==list():
+			adapter=""
+		else:
+			adapter="-a {}".format(input.adapter)
+
+		if input.counts==list():
+			counts=""
+		else:
+			counts="-o {}".format(input.counts)
+
+		if input.insert==list():
+			insert=""
+		else:
+			insert="-i {}".format(input.insert)
+
+		if input.stat==list():
+			stat=""
+		else:
+			stat="-s {}".format(input.stat)
+
+		if input.dist==list():
+			dist=""
+		else:
+			dist="-d {}".format(input.dist)
+
+		if input.geneBody==list():
+			geneBody=""
+		else:
+			geneBody="-b {}".format(input.geneBody)
+		
+		if input.sat==list():
+			sat=""
+		else:
+			sat="-t {}".format(input.sat)
+
+		if input.biotype==list():
+			biotype=""
+		else:
+			biotype="-y {}".format(input.biotype)
+
+		if input.pca==list():
+			pca=""
+		else:
+			pca="-z {}".format(input.pca)
+			
+		if input.ma==list():
+			ma=""
+		else:
+			ma="-m {}".format(input.ma)
+			
+		if len(mates)==1:
+			SE="-u"
+		else:
+			SE=""
+
+		shell("python rules/RNASeq_report.py -p {params.project_name} -c {params.group} -e {params.email} -n {params.samples} -f {params.fastqc_names} {fastqc} {counts} {adapter} {insert} {stat} {gc} {dist} {geneBody} {sat} {biotype} {pca} {ma} {SE}")
+

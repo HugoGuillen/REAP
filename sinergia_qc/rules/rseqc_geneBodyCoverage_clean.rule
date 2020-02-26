@@ -1,0 +1,19 @@
+# rseqc_geneBodyCoverage_clean.rule
+# moves the output of rseqc_geneBodyCoverage.rule to a new directory
+# It was necessary to separate this step, because mv command was executed before previous step was done (??)
+
+rule rseqc_geneBodyCoverage_clean:
+	input:
+		bodyCov="rseqc.{sample}.geneBodyCoverage.curves.pdf",
+		rscript="rseqc.{sample}.geneBodyCoverage.r",
+		coverage_table="rseqc.{sample}.geneBodyCoverage.txt"
+	output:
+		bodyCov="rseqc/{sample}/rseqc.{sample}.geneBodyCoverage.curves.pdf",
+		rscript="rseqc/{sample}/rseqc.{sample}.geneBodyCoverage.r",
+		coverage_table="rseqc/{sample}/rseqc.{sample}.geneBodyCoverage.txt"
+	log:
+		"logs/rseqc/{sample}.geneBodyCoverage_clean.log"
+	run:
+		resultDir="rseqc/{}/".format(wildcards.sample)
+		shell('/bin/echo Job geneBodyCoverage_clean.{wildcards.sample} with Job ID "$JOB_ID" runs on host `hostname`; mkdir -p {resultDir}; mv -f {input.bodyCov} {resultDir}; mv -f {input.rscript} {resultDir}; mv -f {input.coverage_table} {resultDir}')
+		

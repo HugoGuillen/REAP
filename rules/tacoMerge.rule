@@ -1,0 +1,28 @@
+# stringtieMerge.rule
+# assembly merge with StringTie with reference genome
+
+def py_generate_taco_txt(inputs):
+	taco = open("assembly/taco.txt", "w")
+	for i in inputs:
+		taco.write(str(i)+"\n")
+	taco.close()
+
+rule tacoMerge:
+	input:
+		expand("assembly/{assembly}/{group_names}.gtf", assembly=["scallop", "stringtie"], group_names=group_names)
+	output:
+		directory("assembly/taco")
+	params:
+		taco=config["taco_version"],
+#		taco_threads=config["samtools_sortByName_threads"],
+		taco_threads=8,
+		gtf=config["gtf"]
+	log:
+		log="logs/taco/merged_assembly.log"
+	threads:
+		int(config["star_threads"])
+	run:
+		py_generate_taco_txt(list(input)+["assembly/reference.gtf"])
+		shell('bash scripts/reference_assembly.sh {params.gtf}; ')
+		taco="/data/projects/p283_rna_and_disease/scripts/taco-v0.7.3.Linux_x86_64/taco_run"
+		shell(taco+" -o {output} -p {params.taco_threads} --filter-min-length 0 --filter-min-expr 0 --isoform-frac 0 --gtf-expr-attr RPKM assembly/taco.txt 2>{log}")		

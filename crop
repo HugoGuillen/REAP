@@ -1,0 +1,58 @@
+# main snakefile
+
+# HOW TO LAUNCH ON THE CLUSTER
+# snakemake --printshellcmds --cluster "sbatch -N 8 -o /data/projects/p283_rna_and_disease/projects/sinergia/sinergia/sinergia_main/output -e /data/projects/p283_rna_and_disease/projects/sinergia/sinergia/sinergia_main/error -J SM_" --jobs 10 --latency-wait 3600
+
+
+######### IMPORT #########
+import os, re, glob, sys
+configfile: "config/config.json"
+
+sys.path.insert(0, './scripts')
+from SampleNames import fastqSamples, groups
+
+SampleNames = fastqSamples[0]	#['cFb1_L6_001_', ... ]
+SampleIDs = fastqSamples[1]	#['cFb1', 'cFb1a', ... ]
+SamplesPerID = fastqSamples[2]	#{'iCPC10': ['iCPC10_L6_010_', ...]}
+mates = fastqSamples[3]		#['R1', 'R2']
+groups = groups			#{'cardiac_precursor_cells': ['iCPC8', 'iCPC10', ...]}
+group_names=list(groups.keys())	#['cardiac_precursor_cells', 'cardiac_fibroblast']
+
+project = config["project_name"]
+
+######## snakemake ########
+# "Inputs" for rule all are the targets for the snakemake; targets = outputs
+
+rule all:
+	input:
+#fastqc
+		expand(project+"/fastqc/{SampleNames}{mates}_fastqc.html", SampleNames=SampleNames, mates=mates),
+#starRef
+		project+"/star/star_ref/chrStart.txt",
+#starAlignment
+		expand(project+"/star/map/{files}Aligned.sortedByCoord.out.bam", files=SampleIDs),
+#mapping_statistics
+		project+"/star/statistics.csv",
+#samtools_mergeBAM
+		expand(project+"/star/mergedBAM/{group}.merged.bam", group=groups),
+#BigWig
+#		expand(project+"/star/bigwig/{sample}.rev.bw", sample=SampleIDs),
+#BigWigMerge
+#		expand(project+"/star/bigwig/{group}.rev.bw", group=groups),
+#stringtieAssembly - scallopAssembly
+		expand(project+"/assembly/stringtie/{group}.gtf", group=groups),
+		expand(project+"/assembly/scallop/{group}.gtf", group=groups),
+#stringtieMerge
+		project+"/assembly/guided_merged_assembly.gtf"
+
+
+include: "rules/fastqc.rule"
+include: "rules/starRef.rule"
+include: "rules/starAlignment.rule"
+include: "rules/mapping_statistics.rule"
+include: "rules/samtools_mergeBAM.rule"
+#include: "rules/BigWig.rule"
+#include: "rules/BigWigMerge.rule"
+include: "rules/stringtieAssembly.rule"
+include: "rules/scallopAssembly.rule"
+include: "rules/stringtieMerge.rule"

@@ -1,0 +1,44 @@
+# main snakefile
+
+# HOW TO LAUNCH ON THE CLUSTER
+# snakemake --printshellcmds --cluster "sbatch -N 8 -o /data/projects/p283_rna_and_disease/projects/sinergia/sinergia/sinergia_main/output -e /data/projects/p283_rna_and_disease/projects/sinergia/sinergia/sinergia_main/error -J SM_" --jobs 10 --latency-wait 3600
+
+
+######### IMPORT #########
+import os, re, glob, sys
+configfile: "config/config.json"
+
+sys.path.insert(0, './scripts')
+from SampleNames import fastqSamples, groups
+
+SampleNames = fastqSamples[0]	#['cFb1_L6_001_',
+SampleIDs = fastqSamples[1]	#['cFb1', 'cFb1a', 
+SamplesPerID = fastqSamples[2]	#{'iCPC10': ['iCPC10_L6_010_'
+mates = fastqSamples[3]		#['R1', 'R2']
+groups = groups			#{'cardiac_precursor_cells': ['iCPC8', 'iCPC10',
+group_names=list(groups.keys())	#['cardiac_precursor_cells', 'condition', 'cardiac_fibroblast']
+
+project = config["project_name"]
+
+######## snakemake ########
+# "Inputs" for rule all are the targets for the snakemake; targets = outputs
+
+rule all:
+	input:
+#rules/kallistoIndex
+		project+"/kallisto/kallisto_index",
+#rules/kallistoQuantification
+		directory(expand(project+"/kallisto/{SampleIDs}/abundance.tsv", SampleIDs=SampleIDs)),
+#rules/transcriptGeneNamemap
+		project+"/sleuth/geneNameMap/transcriptID_geneName_map.txt",
+#rules/GeneCoordinates
+		project+"/sleuth/geneNameMap/GeneCoordinates.bed",
+#rules/DEanalysis
+		project+"/sleuth/PC.pdf"
+
+
+include: "rules/kallistoIndex.rule"
+include: "rules/kallistoQuantification.rule"
+include: "rules/transcriptGeneNamemap.rule"
+include: "rules/GeneCoordinates.rule"
+include: "rules/DEanalysis.rule"

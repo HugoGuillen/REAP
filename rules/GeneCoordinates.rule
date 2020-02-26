@@ -1,0 +1,16 @@
+# GeneCoordinates
+# Generates file with coordinates for each Gene (GeneName chrom start end strand)
+
+rule GeneCoordinates:
+	input:
+		TranscriptGeneMap=project+"/sleuth/geneNameMap/transcriptID_geneName_map.txt"
+	params:
+		novel=config["novel_assembly"],
+		ref_assembly=config["gtf"]
+	output:
+		map=project+"/sleuth/geneNameMap/GeneCoordinates.bed"
+	log:
+		log=project+"/logs/sleuth/GeneCoordinates.log"
+	run:
+		assembly = project+"/assembly/guided_merged_assembly.gtf" if params.novel == "1" else params.ref_assembly
+		shell("python ./scripts/geneName_coordinates.py {input.TranscriptGeneMap} {assembly} > {output.map}")

@@ -1,0 +1,53 @@
+# rseqc.rule
+# runs the following scripts from RSeQC:
+# read_distribution.py	--> produces table with read distribution
+# junction_saturation.py --> saturation report for splice junctions
+# RPKM_saturation.py --> saturation for rpkm
+
+# several parameters currently set to default
+# junction_saturation.py / RPKM_saturation.py: start (default 5), end (100) and step size (5) for the resampling (argument -l, -u, -s)
+# junction_saturation.py: Minimum intron size (bp). default=50 (-m)
+# junction_saturation.py: Minimum number of supportting reads to call a junction. default=1 (-v)
+# RPKM_saturation.py: Transcripts with RPKM smaller than this number will be ignored in visualization plot. default=0.01 (-c)
+
+rule rseqc:
+	input:
+		main("coord_sorted/{sample}.coordSorted.bam")
+	output:
+		readDist="rseqc/{sample}/{sample}.readDistributionStats.txt",
+		juncSat="rseqc/{sample}/rseqc.{sample}.junctionSaturation_plot.pdf",
+		rpkmSat="rseqc/{sample}/rseqc.{sample}.saturation.pdf"
+	params:
+		bed=config["bed"],
+		R_path=config["R_path"],
+		rseqc=config["rseqc_version"],
+		strand=config["strand"]
+#	threads:
+#		int(config["rseqc_threads"])
+	log:
+		"logs/rseqc/{sample}.log"
+	run:
+		resultDir="rseqc/{}/".format(wildcards.sample)
+		basename="rseqc.{}".format(wildcards.sample)
+		r_path=params.R_path
+		r_path=r_path.split("/")
+		r_path="/".join(r_path[:-1])
+		r_path=r_path+"/"
+					
+		# strandedness. Default is none (for unstranded)
+		if params.strand=="0":
+			d=""
+		else:
+			if len(mates)==2:
+				if params.strand=="1":
+					d="-d '1++,1--,2+-,2-+' "
+				elif params.strand=="2":
+					d="-d '1+-,1-+,2++,2--' "
+			else:
+				if params.strand=="1":
+					d="-d '++,--' "
+				elif params.strand=="2":
+					d="-d '+-,-+' "
+
+		shell("export PATH={r_path}:$PATH; module add UHTS/Quality_control/RSeQC/{params.rseqc}; read_distribution.py -i {input} -r {params.bed} > {output.readDist} 2> {log};  junction_saturation.py -i {input} -o {basename} -r {params.bed} 2> {log}; RPKM_saturation.py -i {input} -o {basename} -r {params.bed} {d}2> {log}; mv -f {basename}* {resultDir}")		
+		

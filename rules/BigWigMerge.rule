@@ -1,0 +1,20 @@
+# BigWigMerge.rule
+# merge BigWig files by conditions
+
+rule BigWigMerge:
+	input:
+		bws_rev=lambda wildcards: expand(project+"/star/bigwig/{sample}.rev.bw", sample=groups[wildcards.group_names]) 
+	output:
+		project+"/star/bigwig/{sample}.rev.bw"	
+	params:
+		deeptools=config["deeptools_version"],
+		samtools=config["samtools_version"]
+	threads:
+		int(config["star_threads"])
+	log:
+		project+"/logs/bw/{sample}.log"
+	run:
+#		shell("./scripts/toBigWig.sh {} {} {} {} {} 2>{}".format(params.deeptools, params.samtools, params.sampleNames, project, threads, log))
+		print(input.bws_rev)
+
+

@@ -1,0 +1,45 @@
+# qualimap_rnaseq.rule
+# runs Qualimap2 rnaseq to produce the following results for the final report:
+# 	1) Table with alignment stats
+# Will consider only uniquely-mapped reads 
+
+
+def determine_input(wildcards):
+	if len(mates)==2:
+		input_bam=main("name_sorted/{}.nameSorted.bam".format(wildcards.sample))
+	else:
+		input_bam=main("mapped_reads/{}.bam".format(wildcards.sample))
+	return input_bam
+	
+
+rule qualimap_rnaseq:
+	input:
+		determine_input
+	output:
+		report="qualimap/rnaqc/{sample}/qualimapReport.html",
+		table="qualimap/rnaqc/{sample}/rnaseq_qc_results.txt"
+	params:
+		R_path=config["R_path"],
+		qualimap=config["qualimap"],
+		qcrnaseq_mem=config["qualimap_rnaseq_mem"],
+		gtf=config["gtf"],
+		strand=config["strand"]
+	log:
+		"logs/qualimap/rnaqc.{sample}.log"
+	run:
+		if(len(mates)==2):
+			pe="-pe"
+		else:
+			pe=""
+			
+		# find out strandedness option:
+		if params.strand=="0":
+			strandedness="--sequencing-protocol non-strand-specific"
+		elif params.strand=="1":
+			strandedness="--sequencing-protocol strand-specific-forward"
+		elif params.strand=="2":
+			strandedness="--sequencing-protocol strand-specific-reverse"
+			
+		import os.path
+		outdir=os.path.dirname(str(output.report))
+		shell("export PATH={params.R_path}:$PATH; {params.qualimap} rnaseq --java-mem-size={params.qcrnaseq_mem} -a uniquely-mapped-reads -bam {input} -gtf {params.gtf} --outdir {outdir} {pe} -s {strandedness} 2> {log}")

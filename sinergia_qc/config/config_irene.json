@@ -1,0 +1,30 @@
+{
+	"R_path" : "/software/R/3.3.2/bin/R", 
+	"qualimap" : "/mnt/apps/qualimap_v2.2.1/qualimap", 
+	"rseqc_version" : "2.6.1", 
+	"fastqFolder" : "/data/projects/p283_rna_and_disease/projects/sinergia/samples/fastq/", 
+	"extension" : "fastq.gz", 
+	"gtf" : "/data/projects/p283_rna_and_disease/projects/sinergia/mm10/gencode.vM14.annotation.gtf", 
+	"bed" : "/data/projects/p283_rna_and_disease/projects/sinergia/mm10/gencode.vM14.annotation.bed", 
+	"biomart_db" : "mmusculus_gene_ensembl", 
+	"expDesign" : "/data/projects/p283_rna_and_disease/projects/sinergia/irene_pipeline/RNASeqPipeline/main/experimental_design.txt", 
+	"strand" : "2", 
+	"count_table_basename" : "Output", 
+	"qualimap_mem" : "16G", 
+	"qualimap_rnaseq_mem" : "32G", 
+	"qualimap_multibam_threads" : "4", 
+	"project_name" : "MyProject", 
+	"group" : "Carlos", 
+	"email" : "carlospq88@gmail.com", 
+	"includeGeneCov" : "no", 
+	"sampleName" : {
+		"delim" : "_", 
+		"start" : "1", 
+		"end" : "1" 
+	},
+	"mates" : {
+		"mate1" : "R1", 
+		"mate2" : "R2" 
+	},
+"eof": "true" 
+}
