@@ -6,8 +6,8 @@
 
 ######### IMPORT #########
 import os, re, glob, sys
-configfile: "config/config.json"
-
+#configfile: "config/config.json"
+print(config)
 sys.path.insert(0, './scripts')
 from SampleNames import fastqSamples, groups
 

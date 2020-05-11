@@ -1,7 +1,7 @@
 import sys, os, json
 
-with open("./config/config.json", "r") as read_file:
-    config = json.load(read_file)
+#with open("./config/config.json", "r") as read_file:
+#    config = json.load(read_file)
 
 if not os.path.isdir(config["fastqFolder"]):
 	sys.exit("The directory with the fastq files does not exist")
