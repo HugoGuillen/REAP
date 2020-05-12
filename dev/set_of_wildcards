@@ -1,0 +1,18 @@
+pairs = {"mate1" : "r1", "mate2" : "r2"}
+
+samples = {
+    "sample1": "sample_one",
+    "sample2": "sample_two",
+    "sample3": "sample_three"
+}
+
+rule all:
+    input: expand("data/{sample}/{sample}_concatenated.txt", sample = samples)
+        
+rule concatenate:
+  input:
+    expand("data/{{sample}}_{pair}.txt", pair=pairs)  
+  shell:
+    '''
+    echo {sample} {input};
+    '''

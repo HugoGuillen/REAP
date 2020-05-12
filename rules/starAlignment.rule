@@ -32,22 +32,18 @@ rule starAlignment:
 		int(config["star_threads"])
 	log:
 		project+"/logs/star/{SampleIDs}.log"
-	run:
-
+	run:        
 		mate1Files=comma_join(input.mate1)
-
 		# command to read fasq files
 		if "gz" in config["extension"]:
 			readCommand="zcat"
 		else:
 			readCommand="cat"
-	
 		# star ref
 		if params.star_ref == "":
 			ref=project+"/star/star_ref"
 		else:
 			ref=params.star_ref
-
 		# prepare files for for paired-end data:
 		if len(params.mate2)>0:
 			mate2Files=comma_join(params.mate2)
@@ -56,7 +52,7 @@ rule starAlignment:
 		else:
 			inputfiles="{}".format(mate1Files)
 
-		command="module add UHTS/Aligner/STAR/{params.star_v}; mkdir -p "+project+"/star/map; STAR --outSAMstrandField intronMotif --limitBAMsortRAM {params.starRAM} --runThreadN 2 --outSAMtype BAM SortedByCoordinate --genomeDir "+ref+" --readFilesCommand "+readCommand+" --readFilesIn {inputfiles} --outFileNamePrefix {params.output} 2>{log};"
+		command="module add UHTS/Aligner/STAR/{params.star_v}; mkdir -p "+project+"/star/map; STAR --outSAMstrandField intronMotif --limitBAMsortRAM {params.star_RAM} --runThreadN 2 --outSAMtype BAM SortedByCoordinate --genomeDir "+ref+" --readFilesCommand "+readCommand+" --readFilesIn {inputfiles} --outFileNamePrefix {params.output} 2>{log};"
 		shell(command)
 
 	

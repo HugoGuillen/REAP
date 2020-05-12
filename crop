@@ -6,11 +6,10 @@
 
 ######### IMPORT #########
 import os, re, glob, sys
-#configfile: "config/config.json"
-print(config)
 sys.path.insert(0, './scripts')
-from SampleNames import fastqSamples, groups
 
+from SampleNames import GetSampleData
+fastqSamples, groups = GetSampleData(config) 
 SampleNames = fastqSamples[0]	#['cFb1_L6_001_', ... ]
 SampleIDs = fastqSamples[1]	#['cFb1', 'cFb1a', ... ]
 SamplesPerID = fastqSamples[2]	#{'iCPC10': ['iCPC10_L6_010_', ...]}

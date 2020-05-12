@@ -1,0 +1,5 @@
+import os, re, glob, sys
+import pandas as pd
+
+df_exp = pd.read_csv(config['experimental_design'],sep='\t')
+print(df_exp)
