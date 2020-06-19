@@ -1,5 +1,195 @@
+#DEBUG DRY
+# snakemake --dryrun --debug --debug-dag --printshellcmds -s crop2 --configfile test_data/config.json
+#RUN DEBUG
+# snakemake --debug --debug-dag --printshellcmds -s crop2 --configfile test_data/config.json
+#RUN
+# snakemake --printshellcmds -s crop2 --configfile test_data/config.json --cores 1
+#DAG
+# snakemake --dag -s crop2 --configfile test_data/config.json | unflatten -l 4 | dot -Tpng > dag.png
+#  
+
 import os, re, glob, sys
+from os import path,listdir
 import pandas as pd
 
+#~~~Get sample info
 df_exp = pd.read_csv(config['experimental_design'],sep='\t')
-print(df_exp)
+df_exp['sample_prefix'] = df_exp['sample'].apply(lambda x: x+config['delim'])
+#df_exp = df_exp.iloc[[0,4]] #Take only two rows for testing
+
+#~~~Setup output 
+project_path = path.abspath(config['project_name'])
+fastq_path = path.abspath(config['fastqFolder'])
+star_ref_path = path.abspath(config.get('star_reference', path.join(project_path,'star','star_ref')))
+
+logs_path = path.join(project_path,'logs')
+fastqc_path = path.join(project_path,'fastqc')
+star_map_path = path.join(project_path,'star','map')
+star_mergedbam_path = path.join(project_path,'star','mergedBAM')
+assembly_stringtie_path = path.join(project_path,'assembly','stringtie')
+assembly_scallop_path = path.join(project_path,'assembly','scallop')
+
+fastq_ext = config['extension']
+#~~~Setup wildcards
+W_SAMPLE_PREFIX = df_exp['sample_prefix']
+W_MATE = config['mates'].values()
+W_GROUPS = sorted(df_exp['condition'].unique())
+GROUPS_DICT = df_exp.groupby('condition')['sample_prefix'].apply(list).to_dict()
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rule all:
+    input:
+        #~~~Input fastq files
+        expand(path.join(fastq_path,'{sample_prefix}{mate}.'+fastq_ext), sample_prefix=W_SAMPLE_PREFIX, mate=W_MATE),     
+        #~~~fastqc
+        expand(path.join(fastqc_path,'{sample_prefix}{mate}_fastqc.html'), sample_prefix=W_SAMPLE_PREFIX, mate=W_MATE),
+        #~~~star_ref FIX: use star_ref_old if exists.
+        path.join(star_ref_path,'chrStart.txt'),
+        #~~~star_alignment
+        expand(path.join(star_map_path,'{sample_prefix}Aligned.sortedByCoord.out.bam'), sample_prefix=W_SAMPLE_PREFIX),
+        expand(path.join(star_map_path,'{sample_prefix}Log.final.out'), sample_prefix=W_SAMPLE_PREFIX),
+        #~~~mapping_statistics
+        path.join(project_path,'star','statistics.csv'),
+        #~~~merge_BAM
+        expand(path.join(star_mergedbam_path,'{group}.merged.bam'), group=W_GROUPS),
+        #~~~PLACEHOLDER FOR BIGWIG AND BIGWIGMERGE
+        #~~~assembly_stringtie
+        expand(path.join(assembly_stringtie_path,'{group}.gtf'), group=W_GROUPS),
+        #~~~assembly_scallop
+        expand(path.join(assembly_scallop_path,'{group}.gtf'), group=W_GROUPS),
+        #~~~stringtie_merge
+        path.join(project_path,'assembly','guided_merged_assembly.gtf')
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+        
+rule fastqc:
+    input:
+        fastq = path.join(fastq_path,'{sample_prefix}{mate}.'+fastq_ext)
+    output:
+        fastqc = path.join(fastqc_path,'{sample_prefix}{mate}_fastqc.html')
+    log:
+        log = path.join(logs_path,'fastqc','{sample_prefix}{mate}.log')
+    shell:
+        "mkdir -p "+fastqc_path+";"
+        "fastqc -o "+fastqc_path+" --extract {input.fastq} 2>{log};"
+
+        
+rule starRef:
+    input:
+        gtf=config["gtf"],
+        reference_fasta = config["reference_fasta"]
+    output:
+        path.join(star_ref_path,'chrStart.txt')
+    params:                
+        limitGenomeGenerateRAM = config.get('limitGenomeGenerateRAM','9000000000')
+    log:
+        log = path.join(logs_path,'star','star_ref.log')
+    threads:
+        int(config["star_threads"])
+    shell:
+        "mkdir -p "+star_ref_path+"; "
+        " > {log}; "
+        "if [ -f {output} ]; then "
+        "echo 'found previous star_ref!' > {log}; "        
+        "else "
+        "STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir "+star_ref_path+" --genomeFastaFiles {input.reference_fasta} --sjdbGTFfile {input.gtf} --limitGenomeGenerateRAM {params.limitGenomeGenerateRAM} 2> {log}; "
+        "fi"
+
+        
+rule starAlignment:
+    input:
+        chrStart = path.join(star_ref_path,'chrStart.txt'),
+        mate1 = path.join(fastq_path,'{sample_prefix}'+config['mates']['mate1']+'.'+fastq_ext)        
+    output:
+        bam = path.join(star_map_path,'{sample_prefix}Aligned.sortedByCoord.out.bam'),
+        log = path.join(star_map_path,'{sample_prefix}Log.final.out')        
+    params:
+        prefix = path.join(star_map_path,'{sample_prefix}'),
+        inputs = path.join(fastq_path,'{sample_prefix}'+config['mates']['mate1']+'.'+fastq_ext)  
+                    if len(config['mates'])==1 
+                    else  path.join(fastq_path,'{sample_prefix}'+config['mates']['mate1']+'.'+fastq_ext)+
+                            ','+path.join(fastq_path,'{sample_prefix}'+config['mates']['mate2']+'.'+fastq_ext),
+        gtf = config["gtf"],
+        star_ref = star_ref_path,
+        star_v = config["star_version"],
+        starRAM = config["star_RAM"],
+        readCommand = 'zcat' if fastq_ext.endswith('.gz') else 'cat'
+    threads:
+        int(config["star_threads"])
+    log:
+        log = path.join(logs_path,'star','{sample_prefix}.log') #TODO: remove final sep from sample_prefix?
+    shell:        
+        "mkdir -p "+star_map_path+"; "
+        "STAR --outSAMstrandField intronMotif --limitBAMsortRAM {params.starRAM} --runThreadN 2 --outSAMtype BAM SortedByCoordinate --genomeDir {params.star_ref} --readFilesCommand {params.readCommand} --readFilesIn {params.inputs} --outFileNamePrefix {params.prefix} 2> {log}; "
+        
+        
+rule mapping_statistics:
+    input:
+        input_log = expand(path.join(star_map_path,'{sample_prefix}Log.final.out'), sample_prefix=W_SAMPLE_PREFIX)
+    output:        
+        stats = path.join(project_path,'star','statistics.csv')
+    log:
+        log = path.join(logs_path,'star','statistics.log')
+    shell:
+        ' > {log}; '
+        'for i in {input.input_log}; do '
+        './scripts/mapping_statistics.sh "$i" {output.stats} 2>> {log}; '        
+        'done;'
+        
+        
+rule samtools_mergeBAM:
+    input:
+        bam = lambda wildcards: expand(path.join(star_map_path,'{sample_prefix}Aligned.sortedByCoord.out.bam'), sample_prefix=GROUPS_DICT[wildcards.group])
+    output:
+        path.join(star_mergedbam_path,'{group}.merged.bam')
+    params:
+        mem = config["sort_mem"]
+    threads:
+        int(config["samtools_sortByName_threads"])
+    log:
+        log = path.join(logs_path,'mergeBAM','{group}.log')
+    shell:
+        "mkdir -p "+star_mergedbam_path+"; "
+        "samtools merge -@ {threads} {output} {input.bam} 2> {log}"
+
+        
+rule stringtieAssembly:
+    input:
+        bam = path.join(star_mergedbam_path,'{group}.merged.bam')
+    output:
+        path.join(assembly_stringtie_path,'{group}.gtf')    
+    log:
+        log = path.join(logs_path,'assembly','{group}_stringtie.log')        
+    threads:
+        int(config["star_threads"])
+    shell:
+        "mkdir -p "+assembly_stringtie_path+"; "
+        "stringtie {input.bam} --rf -o {output} -p {threads} 2> {log}; "
+        
+        
+rule scallopAssembly:
+    input:
+        bam = path.join(star_mergedbam_path,'{group}.merged.bam')
+    output:
+        path.join(assembly_scallop_path,'{group}.gtf')    
+    log:
+        log = path.join(logs_path,'assembly','{group}_scallop.log')        
+    threads:
+        int(config["star_threads"])
+    shell:
+        "mkdir -p "+assembly_scallop_path+"; "
+        "scallop -i {input.bam} -o {output} --min_transcript_coverage 0.9 --min_single_exon_coverage 15 --min_num_hits_in_bundle 10 --library_type first 2> {log}"
+        
+        
+rule stringtieMerge:
+    input:
+        expand(path.join(project_path,'assembly','{assembly}','{group}.gtf'), assembly=["scallop", "stringtie"], group=W_GROUPS)
+    output:
+        path.join(project_path,'assembly','guided_merged_assembly.gtf')        
+    params:        
+        gtf = config["gtf"]
+    log:
+        log = path.join(logs_path,'assembly','merged_assembly.log')
+    threads:
+        int(config["star_threads"])
+    shell:
+        "stringtie --merge -F 0.1 -T 0.1 -G {params.gtf} -o {output} {input} 2> {log}; "
